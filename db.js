@@ -24,4 +24,4 @@ let books = [
         historyBorrow: []
     }
 ];
-module.exports=books;
+export default books;

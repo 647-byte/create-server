@@ -1,0 +1,10 @@
+import { Router } from "express";
+const router = Router();
+import {getAllBooks,getSpecificBook,addBook,deleteBook,updateBook,borrwAndReturn} from'../controllers/book.controller';
+router.get('/',getAllBooks);
+router.get('/:code',getSpecificBook);
+router.post('/',addBook);
+router.delete('/:code',deleteBook);
+router.put('/:code',updateBook);
+router.patch('/:code',borrwAndReturn);
+export default router;
