@@ -6,7 +6,12 @@ app.get('/', (req, res) => {
     res.send("hello to library");
 })
 app.get('/books', (req, res) => {
-    res.json(books);
+    const { search = "", page = 1, limit = 30 } = req.query;
+    let result = books.filter(b => b.name.includes(search));
+    const p = +page;
+    const l = +limit;
+    result = result.slice((p - 1) * l, (p - 1) * l + l);
+    res.json(result);
 })
 app.get('/books/:code', (req, res) => {
     const code = parseInt(req.params.code);
@@ -56,29 +61,20 @@ app.put('/books/:code', (req, res) => {
 })
 app.patch('/books/:code', (req, res) => {
     const code = +req.params.code;
-    const { codeUser } = req.body;
+    const { codeUser } = req.body||{};
     const index = books.findIndex(b => b.code === code);
     if (index === -1) {
-        res.status(404).json({ error: "the code not found" });
+        return res.status(404).json({ error: "the code not found" });
     }
-    else if (books[index].borrow) {
-        res.status(400).json({ error: "the book is borrow" });
-    }
-    else {
+    if (codeUser) {
+        if (books[index].borrow){
+            return res.status(400).json({ error: "the book is borrow" });
+        }
         books[index].borrow = true;
         books[index].historyBorrow.push({ codeBook: code, codeUser: codeUser });
-        res.status(204).send();
+        return res.status(204).send();
     }
+    books[index].borrow = false;
+    return res.status(204).send();
 })
-app.patch('/book/:code', (req, res) => {
-    const code = +req.params.code;
-    const index = books.findIndex(b => b.code === code);
-    if (index === -1) {
-        res.status(404).json({ error: "the code not found" });
-    }
-    else {
-        books[index].borrow = false;
-        res.status(204).send();
-    }
-})
-app.listen(5000);
+app.listen(5000); 
