@@ -1,6 +1,6 @@
 import { Router } from "express";
 const router = Router();
-import {getAllBooks,getSpecificBook,addBook,deleteBook,updateBook,borrwAndReturn} from'../controllers/book.controller';
+import {getAllBooks,getSpecificBook,addBook,deleteBook,updateBook,borrwAndReturn} from'../controllers/book.controller.js';
 router.get('/',getAllBooks);
 router.get('/:code',getSpecificBook);
 router.post('/',addBook);

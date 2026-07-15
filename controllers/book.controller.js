@@ -1,4 +1,5 @@
-import books from '../db';
+import books from '../db.js';
+import users from '../db_users.js';
 const getAllBooks=(req, res) => {
     const { search = "", page = 1, limit = 30 } = req.query;
     let result = books.filter(b => b.name.includes(search));
@@ -32,12 +33,12 @@ const addBook=(req, res) => {
 }
 const deleteBook=(req, res) => {
     const code = parseInt(req.params.code);
-    const found = books.find(b => b.code === code);
-    if (!found) {
+    const index = books.findIndex(b => b.code === code);
+    if (index===-1) {
         res.statusCode = 404;
         return res.json({ error: "the book to delete was not found" });
     }
-    books = books.filter(b => b.code !== code);
+    books.splice(index,1);
     res.status(200).json(books);
 }
 const updateBook=(req, res) => {
@@ -66,7 +67,16 @@ const borrwAndReturn=(req, res) => {
         }
         books[index].borrow = true;
         books[index].historyBorrow.push({ codeBook: code, codeUser: codeUser });
+        const indexUser=users.findIndex(u=>u.code===codeUser);
+        if(indexUser===-1){
+            return res.status(404).json({error:"the user not found"});
+        }
+        users[indexUser].booksBorrow.push(code);
         return res.status(204).send();
+    }
+    const borrowUser=users.find(u=>u.booksBorrow.includes(code));
+    if (borrowUser){
+        borrowUser.booksBorrow=borrowUser.booksBorrow.filter(c=>c!==code);
     }
     books[index].borrow = false;
     return res.status(204).send();
