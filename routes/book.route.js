@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {getAllBooks,getSpecificBook,addBook,deleteBook,updateBook,borrwAndReturn} from'../controllers/book.controller.js';
-import { generalLimiter } from "../middlewares/mainMiddlewares.js";
+import { generalLimiter } from "../middlewares/main.middlewares.js";
 const router = Router();
 router.use(generalLimiter);
 router.get('/',getAllBooks);

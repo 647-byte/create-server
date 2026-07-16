@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { generalLimiter,safeLimiter } from "../middlewares/mainMiddlewares.js";
+import { generalLimiter,safeLimiter } from "../middlewares/main.middlewares.js";
 const router =Router();
 import {register,connect,getAllUsers} from '../controllers/user.controller.js';
 router.post('/signup',safeLimiter,register);

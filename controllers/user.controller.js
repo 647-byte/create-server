@@ -1,27 +1,44 @@
 import users from '../db_users.js';
-const register = (req, res) => {
-    const newUser = req.body;
-    const found = users.find(u => u.userName === newUser.userName);
-    if (found) {
-        return res.status(400).json({ error: "the userName allready exist" });
+const register = (req, res, next) => {
+    try {
+        const newUser = req.body;
+        const found = users.find(u => u.userName === newUser.userName);
+        if (found) {
+            const error = new Error("userName is taken");
+            error.status = 400;
+            error.type = "client error";
+            return next(error);
+        }
+        const newCode = users.length > 0 ? Math.max(...users.map(u => u.code)) + 1 : 1;
+        newUser.code = newCode;
+        users.push(newUser);
+        res.status(201).json(newUser);
+    } catch (err) {
+        next(err);
     }
-    const newCode = users.length > 0 ? Math.max(...users.map(u => u.code)) + 1 : 1;
-    newUser.code = newCode;
-    users.push(newUser);
-    res.status(201).json(newUser);
 }
-const connect=(req,res)=>{
-    const {userName,password}=req.body;
-    const index=users.findIndex(u=>u.userName===userName);
-    if (index===-1){
-        return res.status(404).json({error:"the user name not found"});
+const connect = (req, res, next) => {
+    try {
+        const { userName, password } = req.body;
+        const index = users.findIndex(u => u.userName === userName);
+        if (index === -1) {
+            const error = new Error("userName not found");
+            error.status = 404;
+            error.type = "client error";
+            return next(error);
+        }
+        if (users[index].password === password) {
+            return res.status(200).json(users[index]);
+        }
+        const error = new Error("wrong details");
+        error.status = 403;
+        error.type = "client error";
+        return next(error);
+    } catch (err) {o
+        next(err);
     }
-    if (users[index].password===password){
-        return res.status(200).json(users[index]);
-    }
-    return res.status(403).json({error:"the user name or password are worng"});
 }
-const getAllUsers=(req,res)=>{
+const getAllUsers = (req, res) => {
     res.status(200).json(users);
 }
-export {register,connect,getAllUsers};
+export { register, connect, getAllUsers };

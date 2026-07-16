@@ -11,9 +11,10 @@ const safeLimiter = rateLimit({
 })
 const middleAddDate=(req,res,next)=>{
     req.currentDate=new Date();
-    if (req.method==='GET'){
-        console.log(req.currentDate);
-    }
     next();
 }
-export { generalLimiter, safeLimiter,middleAddDate };
+const middlePrintDate=(req,res,next)=>{
+    console.log(req.currentDate);
+    next();
+}
+export { generalLimiter, safeLimiter,middleAddDate,middlePrintDate };
