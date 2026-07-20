@@ -9,12 +9,25 @@ const safeLimiter = rateLimit({
     limit: 10,
     message: 'Too many requests, please try again later.',
 })
-const middleAddDate=(req,res,next)=>{
-    req.currentDate=new Date();
+const middleAddDate = (req, res, next) => {
+    req.currentDate = new Date();
     next();
 }
-const middlePrintDate=(req,res,next)=>{
+const middlePrintDate = (req, res, next) => {
     console.log(req.currentDate);
     next();
 }
-export { generalLimiter, safeLimiter,middleAddDate,middlePrintDate };
+const integrityCheck = (schema,property='body') => {
+    return (req, res, next) => {
+        const {error} = schema.validate(req[property], { abortEarly: false });
+        if (error){
+            const allError=new Error();
+            allError.message=error.details.map(e=>e.message);
+            allError.status=400;
+            allError.type="validation error";
+           return next(allError);
+        }
+        next();
+    }
+}
+export { generalLimiter, safeLimiter, middleAddDate, middlePrintDate,integrityCheck };
