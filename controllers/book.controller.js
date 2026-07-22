@@ -1,89 +1,116 @@
-import books from '../db.js';
+import { isValidObjectId } from 'mongoose';
 import users from '../db_users.js';
-const getAllBooks = (req, res) => {
-    const { search = "", page = 1, limit = 30 } = req.query;
-    let result = books.filter(b => b.name.includes(search));
-    const p = +page;
-    const l = +limit;
-    result = result.slice((p - 1) * l, (p - 1) * l + l);
-    res.json(result);
-}
-const getSpecificBook = (req, res, next) => {
+import Book from '../models/book.model.js';
+const getAllBooks = async (req, res, next) => {
     try {
-        const code = parseInt(req.params.code);
-        const found = books.find(b => b.code === code);
+        let { search = "", page = 1, limit = 30 } = req.query;
+        page = +page;
+        limit = +limit;
+        const result = await Book.find({ name: { $regex: search, $options: 'i' } }).skip((page - 1) * limit).limit(limit);
+        res.json(result);
+    } catch (err) {
+        next(err);
+    }
+}
+const getSpecificBook = async (req, res, next) => {
+    const id = req.params.id;
+    try {
+        if (!isValidObjectId(id)) {
+            const error = new Error("Invalid book ID format");
+            error.status = 400;
+            error.type = "client error";
+            return next(error);
+        }
+        const found = await Book.findById(id);
         if (!found) {
             const error = new Error("book not found");
             error.status = 404;
             error.type = "client error";
             return next(error);
         }
-        else res.json(found);
+        return res.json(found);
     } catch (err) {
         next(err);
     }
 }
-const addBook = (req, res) => {
-    const { code, name, category, price } = req.body;
-    const newBook = {
-        code: code,
-        name: name,
-        category: category,
-        price: price,
-        borrow: false,
-        historyBorrow: [],
-    }
-    books.push(newBook);
-    res.statusCode = 201;
-    res.json(books[books.length - 1]);
-}
-const deleteBook = (req, res, next) => {
+const addBook = async (req, res, next) => {
     try {
-        const code = parseInt(req.params.code);
-        const index = books.findIndex(b => b.code === code);
-        if (index === -1) {
+        const { name, category, price } = req.body;
+        const newBook = new Book({
+            name: name,
+            category: category,
+            price: price,
+            borrow: false,
+            historyBorrow: [],
+        })
+        const newB = await newBook.save();
+        res.status(201).json(newB);
+    }
+    catch (err) {
+        next(err);
+    }
+}
+const deleteBook = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        if (!isValidObjectId(id)) {
+            const error = new Error("Invalid book ID format");
+            error.status = 400;
+            error.type = "client error";
+            return next(error);
+        }
+        const book = await Book.findByIdAndDelete(id);
+        if (!book) {
             const error = new Error("book not found");
             error.status = 404;
             error.type = "client error";
             return next(error);
         }
-        books.splice(index, 1);
-        res.status(200).json(books);
+        res.status(200).json(book);
     } catch (err) {
         next(err);
     }
 }
-const updateBook = (req, res, next) => {
+const updateBook = async (req, res, next) => {
     try {
-        const { code } = req.params;
-        const index = books.findIndex(b => b.code === +code);
-        if (index === -1) {
+        const id = req.params.id;
+        if (!isValidObjectId(id)) {
+            const error = new Error("Invalid book ID format");
+            error.status = 400;
+            error.type = "client error";
+            return next(error);
+        }
+        const b = await Book.findByIdAndUpdate(id, req.body, { new: true });
+        if (!b) {
             const error = new Error("book not found");
             error.status = 404;
             error.type = "client error";
             return next(error);
         }
-        books[index].name = req.body.name || books[index].name;
-        books[index].category = req.body.category || books[index].category;
-        books[index].price = req.body.price || books[index].price;
-        res.status(200).json(books[index]);
+        res.status(200).json(b);
     } catch (err) {
         next(err);
     }
 }
-const borrwAndReturn = (req, res, next) => {
+const borrwAndReturn = async (req, res, next) => {
     try {
-        const code = +req.params.code;
+        const id = req.params.id;
+        if (!isValidObjectId(id)) {
+            const error = new Error("Invalid book ID format");
+            error.status = 400;
+            error.type = "client error";
+            return next(error);
+        }
         const { codeUser } = req.body || {};
-        const index = books.findIndex(b => b.code === code);
-        if (index === -1) {
+        const b = await Book.findById(id);
+        if (!b) {
             const error = new Error("book not found");
             error.status = 404;
             error.type = "client error";
             return next(error);
         }
         if (codeUser) {
-            if (books[index].borrow) {
+            if (b.borrow) {
                 const error = new Error("book is borrow");
                 error.status = 400;
                 error.type = "client error";
@@ -96,16 +123,18 @@ const borrwAndReturn = (req, res, next) => {
                 error.type = "client error";
                 return next(error);
             }
-            books[index].borrow = true;
-            books[index].historyBorrow.push({ codeBook: code, codeUser: codeUser });
-            users[indexUser].booksBorrow.push(code);
+            b.borrow = true;
+            b.historyBorrow.push({ idBook: id, codeUser: codeUser });
+            await b.save();
+            users[indexUser].booksBorrow.push(id);
             return res.status(204).send();
         }
-        const borrowUser = users.find(u => u.booksBorrow.includes(code));
+        const borrowUser = users.find(u => u.booksBorrow.includes(id));
         if (borrowUser) {
-            borrowUser.booksBorrow = borrowUser.booksBorrow.filter(c => c !== code);
+            borrowUser.booksBorrow = borrowUser.booksBorrow.filter(c => c !== id);
         }
-        books[index].borrow = false;
+        b.borrow = false;
+        await b.save();
         return res.status(204).send();
     } catch (err) {
         next(err);

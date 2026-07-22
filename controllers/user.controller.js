@@ -2,6 +2,7 @@ import users from '../db_users.js';
 const register = (req, res, next) => {
     try {
         const newUser = req.body;
+        newUser.booksBorrow = [];
         const found = users.find(u => u.userName === newUser.userName);
         if (found) {
             const error = new Error("userName is taken");
@@ -34,7 +35,7 @@ const connect = (req, res, next) => {
         error.status = 403;
         error.type = "client error";
         return next(error);
-    } catch (err) {o
+    } catch (err) {
         next(err);
     }
 }
