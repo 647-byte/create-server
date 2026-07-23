@@ -1,13 +1,14 @@
 import { Router } from "express";
-import { getAllBooks, getSpecificBook, addBook, deleteBook, updateBook, borrwAndReturn } from '../controllers/book.controller.js';
+import { getAllBooks, getBooksByCategory, getSpecificBook, addBook, deleteBook, updateBook, borrwAndReturn } from '../controllers/book.controller.js';
 import { generalLimiter, integrityCheck } from "../middlewares/main.middlewares.js";
-import { bookSchema, idSchema,updateBookSchema/*,idUserSchema*/ } from "../validators/joi.schemas.js";
+import { bookSchema, idSchema, updateBookSchema, idUserSchema } from "../validators/joi.schemas.js";
 const router = Router();
 router.use(generalLimiter);
 router.get('/', getAllBooks);
+router.get('/category/:category', getBooksByCategory);
 router.get('/:id', integrityCheck(idSchema, 'params'), getSpecificBook);
 router.post('/', integrityCheck(bookSchema), addBook);
 router.delete('/:id', integrityCheck(idSchema, 'params'), deleteBook);
 router.put('/:id', integrityCheck(idSchema, 'params'), integrityCheck(updateBookSchema), updateBook);
-router.patch('/:id', integrityCheck(idSchema, 'params'),/* integrityCheck(idUserSchema, 'body'),*/ borrwAndReturn);
+router.patch('/:id', integrityCheck(idSchema, 'params'), integrityCheck(idUserSchema), borrwAndReturn);
 export default router;

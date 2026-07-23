@@ -1,6 +1,6 @@
 import { isValidObjectId } from 'mongoose';
-import users from '../db_users.js';
 import Book from '../models/book.model.js';
+import User from '../models/user.model.js';
 const getAllBooks = async (req, res, next) => {
     try {
         let { search = "", page = 1, limit = 30 } = req.query;
@@ -8,6 +8,15 @@ const getAllBooks = async (req, res, next) => {
         limit = +limit;
         const result = await Book.find({ name: { $regex: search, $options: 'i' } }).skip((page - 1) * limit).limit(limit);
         res.json(result);
+    } catch (err) {
+        next(err);
+    }
+}
+const getBooksByCategory = async (req, res, next) => {
+    try {
+        const { category } = req.params;
+        const booksArr = await Book.find({ category: category })
+        res.status(200).json(booksArr);
     } catch (err) {
         next(err);
     }
@@ -80,7 +89,7 @@ const updateBook = async (req, res, next) => {
             error.type = "client error";
             return next(error);
         }
-        const b = await Book.findByIdAndUpdate(id, req.body, { new: true });
+        const b = await Book.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
         if (!b) {
             const error = new Error("book not found");
             error.status = 404;
@@ -101,7 +110,7 @@ const borrwAndReturn = async (req, res, next) => {
             error.type = "client error";
             return next(error);
         }
-        const { codeUser } = req.body || {};
+        const idUser = req.body?.id;
         const b = await Book.findById(id);
         if (!b) {
             const error = new Error("book not found");
@@ -109,29 +118,37 @@ const borrwAndReturn = async (req, res, next) => {
             error.type = "client error";
             return next(error);
         }
-        if (codeUser) {
+        if (idUser) {
+            if (!isValidObjectId(idUser)) {
+                const error = new Error("Invalid user ID format");
+                error.status = 400;
+                error.type = "client error";
+                return next(error);
+            }
             if (b.borrow) {
                 const error = new Error("book is borrow");
                 error.status = 400;
                 error.type = "client error";
                 return next(error);
             }
-            const indexUser = users.findIndex(u => u.code === codeUser);
-            if (indexUser === -1) {
+            const found = await User.findById(idUser);
+            if (!found) {
                 const error = new Error("user not found");
                 error.status = 404;
                 error.type = "client error";
                 return next(error);
             }
             b.borrow = true;
-            b.historyBorrow.push({ idBook: id, codeUser: codeUser });
+            b.historyBorrow.push({ idUser: idUser, date: Date.now() });
             await b.save();
-            users[indexUser].booksBorrow.push(id);
+            found.booksInBorrow.push({ id: id, name: b.name });
+            await found.save();
             return res.status(204).send();
         }
-        const borrowUser = users.find(u => u.booksBorrow.includes(id));
+        const borrowUser = await User.findOne({ "booksInBorrow.id": id });
         if (borrowUser) {
-            borrowUser.booksBorrow = borrowUser.booksBorrow.filter(c => c !== id);
+            borrowUser.booksInBorrow = borrowUser.booksInBorrow.filter(c => c.id !== id);
+            await borrowUser.save();
         }
         b.borrow = false;
         await b.save();
@@ -140,4 +157,4 @@ const borrwAndReturn = async (req, res, next) => {
         next(err);
     }
 }
-export { getAllBooks, getSpecificBook, addBook, deleteBook, updateBook, borrwAndReturn };
+export { getAllBooks, getSpecificBook, addBook, deleteBook, updateBook, borrwAndReturn, getBooksByCategory };
