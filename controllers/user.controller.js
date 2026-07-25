@@ -2,13 +2,6 @@ import User from '../models/user.model.js';
 const register = async (req, res, next) => {
     try {
         const { userName, email, phone, password } = req.body;
-        const newUser = new User({
-            userName: userName,
-            email: email,
-            phone: phone,
-            password: password,
-            booksInBorrow: [],
-        })
         const found = await User.findOne({ userName: userName });
         if (found) {
             const error = new Error("userName is taken");
@@ -16,6 +9,13 @@ const register = async (req, res, next) => {
             error.type = "client error";
             return next(error);
         }
+        const newUser = new User({
+            userName: userName,
+            email: email,
+            phone: phone,
+            password: password,
+            booksInBorrow: [],
+        })
         const newU = await newUser.save();
         res.status(201).json(newU);
     } catch (err) {
@@ -25,14 +25,14 @@ const register = async (req, res, next) => {
 const connect = async (req, res, next) => {
     try {
         const { userName, password } = req.body;
-        const found =await User.findOne({ userName: userName });
+        const found = await User.findOne({ userName: userName });
         if (!found) {
             const error = new Error("userName not found");
             error.status = 404;
             error.type = "client error";
             return next(error);
         }
-        if (found.password !== password) {
+        if (! await User.checkPassword(password, found.password)) {
             const error = new Error("wrong details");
             error.status = 403;
             error.type = "client error";
@@ -43,11 +43,11 @@ const connect = async (req, res, next) => {
         next(err);
     }
 }
-const getAllUsers = async (req, res,next) => {
-    try{
-    res.status(200).json(await User.find());
+const getAllUsers = async (req, res, next) => {
+    try {
+        res.status(200).json(await User.find());
     }
-    catch(err){
+    catch (err) {
         next(err);
     }
 }
